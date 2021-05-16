@@ -11,7 +11,15 @@ def alarm(context: CallbackContext) -> None:
   response = requests.get("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY")
   responseJson = response.json()
   photo = responseJson["hdurl"]
+  name = responseJson["title"]
+  explanation = responseJson["explanation"]
+  try:
+    author = responseJson["copyright"]
+    photoInfo = name + " by " + author + "\n\n" + explanation
+  except KeyError:
+    photoInfo = name + "\n\n" + explanation
   context.bot.send_photo(job.context, photo)
+  context.bot.send_message(job.context, photoInfo)
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
@@ -31,12 +39,12 @@ def set_notification(update: Update, context: CallbackContext) -> None:
     hour_to_utc = daily_at.hour - 7
     daily_at_utc = daily_at.replace(hour = hour_to_utc)
     now = datetime.datetime.now()
-    secs = (daily_at_utc - now).total_seconds()
+    daily_at_utc_sec = (daily_at_utc - now).total_seconds()
     day = 24 * 60 * 60
-    #print(time_str, now.day, now.hour, now.minute, now.second, now.microsecond, now.tzinfo, secs)
+    #print(time_str, daily_at_utc.day, daily_at_utc.hour, daily_at_utc.minute, daily_at_utc.second, daily_at_utc.microsecond, daily_at_utc.tzinfo, daily_at_utc_sec)
 
     job_removed = remove_job_if_exists(str(chat_id), context)
-    context.job_queue.run_repeating(alarm, day, secs, context = chat_id, name = str(chat_id))
+    context.job_queue.run_repeating(alarm, day, daily_at_utc_sec, context = chat_id, name = str(chat_id))
 
     text = 'notifications successfully set!'
     if job_removed:
